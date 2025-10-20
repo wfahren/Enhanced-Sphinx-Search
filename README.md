@@ -1,6 +1,6 @@
 # Enhanced Sphinx Search with Phrase Highlighting
 
-This repository contains a Sphinx enhanced search functionality that supports both exact phrase matching and multi-term searches with intelligent highlighting.
+This repository contains a Sphinx documentation site with enhanced search functionality that supports both exact phrase matching and multi-term searches with intelligent highlighting.
 
 ## Features
 
@@ -35,6 +35,8 @@ This repository contains a Sphinx enhanced search functionality that supports bo
 - Sphinx documentation generator
 - Any Sphinx theme (tested with Read the Docs theme)
 - Modern web browser with JavaScript enabled
+
+> **⚠️ Important**: When opening HTML files directly in a browser using `Ctrl+O` or the `file://` protocol, JavaScript functionality is limited by browser security policies. The enhanced search features may not work properly. For full functionality, serve the documentation through a web server (even a local one like `python -m http.server`).
 
 ### Setup
 
@@ -185,6 +187,39 @@ Enable browser developer console to see detailed logging:
 - Content analysis results
 - Highlighting operations
 - Storage management
+
+## Troubleshooting
+
+### Common Issues
+
+**Q: Search enhancement not working**
+A: Check that `search-phrase.js` is loaded and there are no JavaScript console errors
+
+**Q: Search doesn't work when opening files directly (file:// protocol)**
+A: This is expected due to browser security restrictions. Use one of these solutions:
+
+- Serve through a web server: `python -m http.server 8000` then visit `http://localhost:8000`
+- Use the built-in development server if available
+- Deploy to a web server for production use
+
+**Q: Highlighting not appearing**
+A: Ensure localStorage is enabled and check browser console for any errors
+
+**Q: Multi-term search not working**
+A: Verify you're using commas to separate terms: `term1, term2, term3`
+
+**Q: Phrase search giving wrong results**
+A: Check if quotes are needed for exact phrase matching: `"exact phrase"`
+
+### Browser Compatibility
+
+- **Chrome/Firefox/Safari/Edge**: Full support when served via HTTP(S)
+- **File:// Protocol**: Limited functionality due to security restrictions
+- **Older Browsers**: May not support all ES6+ features
+
+## License
+
+This enhancement maintains the same license as your documentation project.
 
 ## Contributing
 
