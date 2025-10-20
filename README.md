@@ -1,6 +1,6 @@
 # Enhanced Sphinx Search with Phrase Highlighting
 
-This repository contains a Sphinx documentation site with enhanced search functionality that supports both exact phrase matching and multi-term searches with intelligent highlighting.
+This repository contains a Sphinx enhanced search functionality that supports both exact phrase matching and multi-term searches with intelligent highlighting.
 
 ## Features
 
