@@ -186,10 +186,6 @@ Enable browser developer console to see detailed logging:
 - Highlighting operations
 - Storage management
 
-## License
-
-This enhancement maintains the same license as your documentation project.
-
 ## Contributing
 
 When modifying the search functionality:
