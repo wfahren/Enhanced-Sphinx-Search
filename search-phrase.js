@@ -9,7 +9,31 @@
     const originalQuery = Search.query;
 
     Search.query = function(query) {
-      console.log("PHRASE DEBUG: Original search query:", query);
+      console.log("PHRASE DEBUG: Original search query:", JSON.stringify(query), "Length:", query ? query.length : 'null');
+      console.log("PHRASE DEBUG: Query type:", typeof query, "Trimmed:", query ? JSON.stringify(query.trim()) : 'null');
+      
+      // Handle special clear command with empty quotes
+      if (query === '""' || query === "''") {
+        console.log("PHRASE DEBUG: Clear command detected - clearing highlights and showing empty results");
+        
+        // Clear stored phrases to remove highlighting
+        localStorage.removeItem("sphinx_highlight_phrases");
+        localStorage.removeItem("sphinx_highlight_terms");
+        localStorage.removeItem("_sphinx_highlight_terms");
+        
+        // Clear any existing highlights on current page
+        clearHighlights();
+        
+        // Show empty search results to stay on search page but with no results
+        console.log("PHRASE DEBUG: Clear command handled - highlights cleared, showing empty results");
+        
+        // Return empty results to display "No results found" message
+        if (typeof _displayNextItem === 'function') {
+          _displayNextItem([], 0, new Set(), new Set());
+        }
+        
+        return; // Don't proceed with normal search
+      }
       
       let phrases = [];
       
@@ -96,6 +120,54 @@
     console.log("PHRASE DEBUG: Page visit count:", (parseInt(sessionStorage.getItem("phrase_page_count") || "0") + 1));
     sessionStorage.setItem("phrase_page_count", parseInt(sessionStorage.getItem("phrase_page_count") || "0") + 1);
     
+    // Check if current URL indicates a clear command
+    const urlParams = new URLSearchParams(window.location.search);
+    const query = urlParams.get('q');
+    if (query === '""' || query === "''") {
+      console.log("PHRASE DEBUG: Clear command detected in URL - clearing localStorage and highlights");
+      
+      // Check if this was already handled locally (global handler blocked navigation)
+      const handledLocally = sessionStorage.getItem('phrase_clear_handled_locally');
+      if (handledLocally) {
+        console.log("PHRASE DEBUG: Clear was handled locally by global handler, no redirect needed");
+        sessionStorage.removeItem('phrase_clear_handled_locally');
+        return;
+      }
+      
+      localStorage.removeItem("sphinx_highlight_phrases");
+      localStorage.removeItem("sphinx_highlight_terms");
+      localStorage.removeItem("_sphinx_highlight_terms");
+      clearHighlights();
+      
+      // Get the previous page from history or use a stored reference
+      const previousPage = sessionStorage.getItem('phrase_previous_page');
+      console.log("PHRASE DEBUG: Stored previous page:", previousPage);
+      console.log("PHRASE DEBUG: Current sessionStorage contents:", Object.keys(sessionStorage));
+      
+      if (previousPage && previousPage !== window.location.href) {
+        console.log("PHRASE DEBUG: Redirecting back to previous page:", previousPage);
+        // Redirect back to the previous page immediately
+        setTimeout(function() {
+          window.location.href = previousPage;
+        }, 100);
+      } else {
+        console.log("PHRASE DEBUG: No valid previous page stored, staying on search results");
+        // Just clear the highlights and stay on search results page
+      }
+      
+      return; // Don't proceed with highlighting
+    }
+    
+    // Store current page as previous page for potential redirect back
+    if (!window.location.href.includes('search.html')) {
+      const currentPage = window.location.href;
+      sessionStorage.setItem('phrase_previous_page', currentPage);
+      console.log("PHRASE DEBUG: Stored current page as previous:", currentPage);
+      console.log("PHRASE DEBUG: Verification - stored value:", sessionStorage.getItem('phrase_previous_page'));
+    } else {
+      console.log("PHRASE DEBUG: On search page, not storing as previous page");
+    }
+    
     const storedPhrases = localStorage.getItem("sphinx_highlight_phrases");
     console.log("PHRASE DEBUG: stored phrases from localStorage:", storedPhrases);
     
@@ -146,14 +218,25 @@
       const highlightOperations = [];
       
       phrases.forEach(phrase => {
+        console.log(`PHRASE DEBUG: Looking for phrase: "${phrase}" on page`);
+        let foundInAnyNode = false;
+        
         textNodes.forEach(textNode => {
           const text = textNode.textContent;
           const lowerText = text.toLowerCase();
+          const lowerPhrase = phrase.toLowerCase();
+          
+          // Check if this text node contains the phrase
+          if (lowerText.includes(lowerPhrase)) {
+            console.log(`PHRASE DEBUG: Found phrase "${phrase}" in text node:`, text.substring(0, 100));
+            foundInAnyNode = true;
+          }
+          
           let searchIndex = 0;
           
           // Find all occurrences of this phrase in the text node
           while (true) {
-            const phraseIndex = lowerText.indexOf(phrase.toLowerCase(), searchIndex);
+            const phraseIndex = lowerText.indexOf(lowerPhrase, searchIndex);
             if (phraseIndex === -1) break;
             
             const parent = textNode.parentNode;
@@ -171,6 +254,11 @@
             searchIndex = phraseIndex + phrase.length;
           }
         });
+        
+        if (!foundInAnyNode) {
+          console.log(`PHRASE DEBUG: Phrase "${phrase}" NOT FOUND on page`);
+          console.log("PHRASE DEBUG: Sample page text:", document.body.textContent.toLowerCase().substring(0, 500));
+        }
       });
       
       console.log("PHRASE DEBUG: Found", highlightOperations.length, "highlighting operations for phrases:", phrases);
@@ -243,6 +331,24 @@
     }
   }
 
+  // Function to clear all existing highlights on the current page
+  function clearHighlights() {
+    console.log("PHRASE DEBUG: clearHighlights called");
+    
+    // Remove all highlighted spans
+    const highlightedSpans = document.querySelectorAll('.highlighted, span[style*="background-color: yellow"]');
+    highlightedSpans.forEach(span => {
+      console.log("PHRASE DEBUG: Removing highlight from:", span.textContent);
+      const parent = span.parentNode;
+      if (parent) {
+        parent.replaceChild(document.createTextNode(span.textContent), span);
+        parent.normalize(); // Merge adjacent text nodes
+      }
+    });
+    
+    console.log("PHRASE DEBUG: Cleared", highlightedSpans.length, "highlights");
+  }
+
   // Monitor localStorage changes to catch external clearing
   const originalRemoveItem = localStorage.removeItem;
   const originalSetItem = localStorage.setItem;
@@ -269,6 +375,287 @@
     return originalClear.call(this);
   };
 
+  // Intercept search form submissions to handle empty searches
+  function interceptSearchForm() {
+    // Try multiple selectors to find search forms - be more aggressive
+    const searchForms = document.querySelectorAll('form[role="search"], #searchbox form, form[action*="search"], form:has(input[name="q"]), .wy-form form, form');
+    const searchInputs = document.querySelectorAll('input[name="q"], input[type="search"], #searchbox input');
+    
+    console.log("PHRASE DEBUG: Found", searchForms.length, "search forms and", searchInputs.length, "search inputs");
+    console.log("PHRASE DEBUG: Search forms:", Array.from(searchForms).map(f => f.outerHTML.substring(0, 100)));
+    console.log("PHRASE DEBUG: Search inputs:", Array.from(searchInputs).map(i => i.outerHTML));
+    
+    // Try to find forms that contain search inputs
+    const formsWithSearchInputs = [];
+    searchInputs.forEach(input => {
+      const form = input.closest('form');
+      if (form && !formsWithSearchInputs.includes(form)) {
+        formsWithSearchInputs.push(form);
+        console.log("PHRASE DEBUG: Found form containing search input:", form.outerHTML.substring(0, 100));
+      }
+    });
+    
+    // Intercept form submissions with capture=true to run before Sphinx handlers
+    // Use ALL forms that contain search inputs
+    const allSearchForms = [...new Set([...searchForms, ...formsWithSearchInputs])];
+    console.log("PHRASE DEBUG: Will add event listeners to", allSearchForms.length, "forms");
+    
+    allSearchForms.forEach((form, index) => {
+      console.log(`PHRASE DEBUG: Adding submit listener to form ${index}:`, form.outerHTML.substring(0, 100));
+      form.addEventListener('submit', function(event) {
+        const formData = new FormData(form);
+        const query = formData.get('q') || '';
+        console.log("PHRASE DEBUG: Form submit intercepted with query:", JSON.stringify(query), "on form:", form.outerHTML.substring(0, 50));
+        
+        // Check specifically for clear command
+        if (query === '""' || query === "''") {
+          console.log("PHRASE DEBUG: Clear command form submission - preventing navigation and clearing highlights");
+          event.preventDefault(); // Prevent form submission
+          event.stopPropagation(); // Stop event bubbling
+          event.stopImmediatePropagation(); // Stop other handlers from running
+          
+          // Clear highlights on current page
+          localStorage.removeItem("sphinx_highlight_phrases");
+          localStorage.removeItem("sphinx_highlight_terms");
+          localStorage.removeItem("_sphinx_highlight_terms");
+          clearHighlights();
+          
+          // Clear the search input
+          const searchInput = form.querySelector('input[name="q"], input[type="search"]');
+          if (searchInput) {
+            searchInput.value = '';
+            searchInput.blur(); // Remove focus
+          }
+          
+          console.log("PHRASE DEBUG: Clear command handled at form level - staying on current page");
+          return false;
+        }
+      }, { capture: true }); // Use capture phase to run before other handlers
+    });
+    
+    // Also intercept Enter key on search inputs directly
+    searchInputs.forEach(input => {
+      // Find the parent form for this input
+      let parentForm = input.closest('form');
+      if (parentForm) {
+        console.log("PHRASE DEBUG: Found parent form for input:", parentForm.outerHTML.substring(0, 100));
+        
+        // Add form to our list if not already there
+        if (!Array.from(searchForms).includes(parentForm)) {
+          parentForm.addEventListener('submit', function(event) {
+            const formData = new FormData(parentForm);
+            const query = formData.get('q') || '';
+            console.log("PHRASE DEBUG: Parent form submit intercepted with query:", JSON.stringify(query));
+            
+            // Check specifically for clear command
+            if (query === '""' || query === "''") {
+              console.log("PHRASE DEBUG: Clear command parent form submission - preventing navigation and clearing highlights");
+              event.preventDefault();
+              event.stopPropagation();
+              event.stopImmediatePropagation();
+              
+              localStorage.removeItem("sphinx_highlight_phrases");
+              localStorage.removeItem("sphinx_highlight_terms");
+              localStorage.removeItem("_sphinx_highlight_terms");
+              clearHighlights();
+              
+              const searchInput = parentForm.querySelector('input[name="q"], input[type="search"]');
+              if (searchInput) {
+                searchInput.value = '';
+                searchInput.blur();
+              }
+              
+              console.log("PHRASE DEBUG: Clear command handled at parent form level - staying on current page");
+              return false;
+            }
+          }, { capture: true });
+        }
+      }
+      
+      input.addEventListener('keydown', function(event) {
+        if (event.key === 'Enter') {
+          const query = input.value || '';
+          console.log("PHRASE DEBUG: Enter key pressed with query:", JSON.stringify(query));
+          
+          // Check specifically for clear command
+          if (query === '""' || query === "''") {
+            console.log("PHRASE DEBUG: Clear command Enter key - preventing navigation and clearing highlights");
+            event.preventDefault();
+            event.stopPropagation();
+            event.stopImmediatePropagation();
+            
+            // Clear highlights
+            localStorage.removeItem("sphinx_highlight_phrases");
+            localStorage.removeItem("sphinx_highlight_terms");
+            localStorage.removeItem("_sphinx_highlight_terms");
+            clearHighlights();
+            
+            input.value = '';
+            input.blur();
+            
+            console.log("PHRASE DEBUG: Clear command handled at input level - staying on current page");
+            return false;
+          }
+        }
+      }, { capture: true });
+    });
+  }
+
+  // Try to intercept search forms immediately, even before DOM is ready
+  function immediateSearchIntercept() {
+    // Use MutationObserver to catch forms as they're added
+    const observer = new MutationObserver(function(mutations) {
+      mutations.forEach(function(mutation) {
+        mutation.addedNodes.forEach(function(node) {
+          if (node.nodeType === 1) { // Element node
+            // Check if this node is a form or contains forms
+            const forms = node.tagName === 'FORM' ? [node] : node.querySelectorAll ? Array.from(node.querySelectorAll('form')) : [];
+            forms.forEach(function(form) {
+              const searchInput = form.querySelector('input[name="q"]');
+              if (searchInput) {
+                console.log("PHRASE DEBUG: MutationObserver found search form, adding immediate handlers");
+                addClearHandlers(form, searchInput);
+              }
+            });
+          }
+        });
+      });
+    });
+
+    observer.observe(document, { childList: true, subtree: true });
+    
+    // Also try immediate detection if elements already exist
+    setTimeout(function() {
+      const existingForms = document.querySelectorAll('form');
+      existingForms.forEach(function(form) {
+        const searchInput = form.querySelector('input[name="q"]');
+        if (searchInput) {
+          console.log("PHRASE DEBUG: Found existing search form, adding immediate handlers");
+          addClearHandlers(form, searchInput);
+        }
+      });
+    }, 50);
+  }
+
+  function addClearHandlers(form, input) {
+    // Prevent duplicate handlers
+    if (form._clearHandlersAdded || input._clearHandlersAdded) {
+      console.log("PHRASE DEBUG: Clear handlers already added to this form/input, skipping");
+      return;
+    }
+    
+    console.log("PHRASE DEBUG: Adding IMMEDIATE clear handlers to form and input");
+    
+    // Mark as having handlers to prevent duplicates
+    form._clearHandlersAdded = true;
+    input._clearHandlersAdded = true;
+    
+    // Add the clear command handlers immediately with maximum priority
+    input.addEventListener('keydown', function(event) {
+      console.log("PHRASE DEBUG: IMMEDIATE keydown event, key:", event.key, "value:", JSON.stringify(input.value));
+      if (event.key === 'Enter' && (input.value === '""' || input.value === "''")) {
+        console.log("PHRASE DEBUG: IMMEDIATE Clear command Enter key - BLOCKING EVERYTHING");
+        event.preventDefault();
+        event.stopPropagation();
+        event.stopImmediatePropagation();
+        
+        localStorage.removeItem("sphinx_highlight_phrases");
+        localStorage.removeItem("sphinx_highlight_terms");
+        localStorage.removeItem("_sphinx_highlight_terms");
+        clearHighlights();
+        
+        input.value = '';
+        input.blur();
+        
+        console.log("PHRASE DEBUG: IMMEDIATE Clear command handled - staying on current page");
+        return false;
+      }
+    }, { capture: true, passive: false });
+
+    form.addEventListener('submit', function(event) {
+      const query = new FormData(form).get('q') || '';
+      console.log("PHRASE DEBUG: IMMEDIATE form submit event, query:", JSON.stringify(query));
+      if (query === '""' || query === "''") {
+        console.log("PHRASE DEBUG: IMMEDIATE Clear command form submission - BLOCKING EVERYTHING");
+        event.preventDefault();
+        event.stopPropagation();
+        event.stopImmediatePropagation();
+        
+        localStorage.removeItem("sphinx_highlight_phrases");
+        localStorage.removeItem("sphinx_highlight_terms");
+        localStorage.removeItem("_sphinx_highlight_terms");
+        clearHighlights();
+        
+        input.value = '';
+        input.blur();
+        
+        console.log("PHRASE DEBUG: IMMEDIATE Clear command handled - staying on current page");
+        return false;
+      }
+    }, { capture: true, passive: false });
+    
+    console.log("PHRASE DEBUG: IMMEDIATE clear handlers successfully added");
+  }
+
+  // Start immediate interception
+  immediateSearchIntercept();
+
+  // Also add a global keydown handler as backup
+  document.addEventListener('keydown', function(event) {
+    if (event.key === 'Enter') {
+      const target = event.target;
+      if (target && target.name === 'q' && (target.value === '""' || target.value === "''")) {
+        console.log("PHRASE DEBUG: GLOBAL keydown handler caught clear command - BLOCKING");
+        event.preventDefault();
+        event.stopPropagation();
+        event.stopImmediatePropagation();
+        
+        localStorage.removeItem("sphinx_highlight_phrases");
+        localStorage.removeItem("sphinx_highlight_terms");
+        localStorage.removeItem("_sphinx_highlight_terms");
+        clearHighlights();
+        
+        target.value = '';
+        target.blur();
+        
+        // Mark that we handled this to prevent redirect-back mechanism
+        sessionStorage.setItem('phrase_clear_handled_locally', 'true');
+        
+        console.log("PHRASE DEBUG: GLOBAL clear command handled - staying on current page");
+        return false;
+      }
+    }
+  }, { capture: true, passive: false });
+
+  // Also add a global form submit handler as backup
+  document.addEventListener('submit', function(event) {
+    const form = event.target;
+    if (form && form.tagName === 'FORM') {
+      const searchInput = form.querySelector('input[name="q"]');
+      if (searchInput && (searchInput.value === '""' || searchInput.value === "''")) {
+        console.log("PHRASE DEBUG: GLOBAL submit handler caught clear command - BLOCKING");
+        event.preventDefault();
+        event.stopPropagation();
+        event.stopImmediatePropagation();
+        
+        localStorage.removeItem("sphinx_highlight_phrases");
+        localStorage.removeItem("sphinx_highlight_terms");
+        localStorage.removeItem("_sphinx_highlight_terms");
+        clearHighlights();
+        
+        searchInput.value = '';
+        searchInput.blur();
+        
+        console.log("PHRASE DEBUG: GLOBAL clear command handled - staying on current page");
+        return false;
+      }
+    }
+  }, { capture: true, passive: false });
+
   document.addEventListener('DOMContentLoaded', initPhraseSearch);
   document.addEventListener('DOMContentLoaded', highlightPhrases);
+  document.addEventListener('DOMContentLoaded', function() {
+    // Delay form interception to ensure all elements are loaded
+    setTimeout(interceptSearchForm, 100);
+  });
 })();
