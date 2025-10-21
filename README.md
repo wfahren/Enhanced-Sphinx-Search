@@ -15,14 +15,6 @@ This repository contains a Sphinx documentation site with enhanced search functi
 | `word1, word2, word3` | All terms required | `key, server, config` → finds pages with ALL words |
 | `""` | **Clear highlights** | `""` → clears all highlighting from pages |
 
-### ✨ **Enhanced Highlighting**
-
-- **Phrase Highlighting**: Complete phrases highlighted as units (not broken into individual words)
-- **Multi-term Highlighting**: When using comma-separated search, all matching terms are highlighted
-- **Persistent Highlighting**: Highlights remain when navigating between search result pages
-- **Manual Clear**: Use `""` (empty quotes) to instantly clear all highlighting
-- **Clean Transitions**: Highlights are properly cleared when performing new searches
-
 ### 🎯 **User Experience**
 
 - **Intuitive**: No need to remember complex search syntax
@@ -60,7 +52,7 @@ This repository contains a Sphinx documentation site with enhanced search functi
 3. **Build your documentation**:
 
    ```bash
-   make html
+   make clean && make html
    ```
 
 ## Technical Details
@@ -93,15 +85,7 @@ source/
 4. **Result Display**: Shows filtered results using original Sphinx display functions
 5. **Highlighting**: Applies custom highlighting on destination pages via localStorage
 
-### Browser Support
-
-- Modern browsers with ES6+ support
-- Async/await functionality required
-- localStorage support required
-
 ## Usage Examples
-
-### Basic Searches
 
 ```text
 openvpn                    # Find pages about OpenVPN
@@ -131,13 +115,6 @@ configuration, setup      # Multiple related terms
 ""                        # Clear all highlighting from pages
 ```
 
-**Workflow example:**
-
-1. Search for `openvpn` → Pages highlighted with "openvpn"
-2. Navigate through results → Highlighting persists
-3. Search for `""` → All highlighting cleared
-4. Continue reading → Clean pages without highlights
-
 ## Customization
 
 ### Styling
@@ -151,15 +128,6 @@ The highlighting uses this CSS class:
 ```
 
 You can customize the appearance by adding CSS rules to your theme.
-
-### Debug Mode
-
-The script includes comprehensive debug logging. Check browser console for:
-
-- Search query processing
-- Content filtering results
-- Highlighting operations
-- localStorage management
 
 ### Theme Compatibility
 
@@ -175,34 +143,6 @@ This enhancement should work with any Sphinx theme that:
 - Basic Sphinx theme ✅
 - Most standard themes ✅
 
-## Development
-
-### Building
-
-```bash
-make clean
-make html
-```
-
-### Testing
-
-Test various search patterns:
-
-1. Single words: `test`
-2. Phrases: `test phrase`
-3. Multi-terms: `test, phrase, example`
-4. Navigation: Back button, multiple result pages
-5. Highlighting: Check console for debug info
-
-### Debugging
-
-Enable browser developer console to see detailed logging:
-
-- Query processing steps
-- Content analysis results
-- Highlighting operations
-- Storage management
-
 ## Troubleshooting
 
 ### Common Issues
@@ -217,34 +157,11 @@ A: This is expected due to browser security restrictions. Use one of these solut
 - Use the built-in development server if available
 - Deploy to a web server for production use
 
-**Q: Highlighting not appearing**
-A: Ensure localStorage is enabled and check browser console for any errors
-
 **Q: Multi-term search not working**
 A: Verify you're using commas to separate terms: `term1, term2, term3`
 
 **Q: Phrase search giving wrong results**
 A: Check if quotes are needed for exact phrase matching: `"exact phrase"`
-
-### Browser Compatibility
-
-- **Chrome/Firefox/Safari/Edge**: Full support when served via HTTP(S)
-- **File:// Protocol**: Limited functionality due to security restrictions
-- **Older Browsers**: May not support all ES6+ features
-
-## License
-
-This enhancement maintains the same license as your documentation project.
-
-## Contributing
-
-When modifying the search functionality:
-
-1. Test all search types thoroughly
-2. Verify highlighting works on various page types
-3. Check browser console for any JavaScript errors
-4. Test navigation (back button, multiple searches)
-5. Ensure compatibility with your Sphinx theme
 
 ## Changelog
 
