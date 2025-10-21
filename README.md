@@ -13,12 +13,14 @@ This repository contains a Sphinx documentation site with enhanced search functi
 | `"quoted text"` | Exact phrase search | `"public key"` → finds pages with exact phrase |
 | `word1, word2` | Multiple terms (AND logic) | `openvpn, server` → finds pages with BOTH words |
 | `word1, word2, word3` | All terms required | `key, server, config` → finds pages with ALL words |
+| `""` | **Clear highlights** | `""` → clears all highlighting from pages |
 
 ### ✨ **Enhanced Highlighting**
 
 - **Phrase Highlighting**: Complete phrases highlighted as units (not broken into individual words)
 - **Multi-term Highlighting**: When using comma-separated search, all matching terms are highlighted
 - **Persistent Highlighting**: Highlights remain when navigating between search result pages
+- **Manual Clear**: Use `""` (empty quotes) to instantly clear all highlighting
 - **Clean Transitions**: Highlights are properly cleared when performing new searches
 
 ### 🎯 **User Experience**
@@ -122,6 +124,19 @@ public, private, key      # Pages discussing all key types
 configuration, setup      # Multiple related terms
 "step by step"            # Exact instructional phrase
 ```
+
+### Clear Highlighting
+
+```text
+""                        # Clear all highlighting from pages
+```
+
+**Workflow example:**
+
+1. Search for `openvpn` → Pages highlighted with "openvpn"
+2. Navigate through results → Highlighting persists
+3. Search for `""` → All highlighting cleared
+4. Continue reading → Clean pages without highlights
 
 ## Customization
 
