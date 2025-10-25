@@ -15,13 +15,6 @@ This repository contains a Sphinx documentation site with enhanced search functi
 | `word1, word2, word3` | All terms required | `key, server, config` → finds pages with ALL words |
 | `""` | **Clear highlights** | `""` → clears all highlighting from pages |
 
-### 🎯 **User Experience**
-
-- **Intuitive**: No need to remember complex search syntax
-- **Flexible**: Support for both phrase and multi-term searches
-- **Visual**: Clear highlighting shows exactly what matched
-- **Fast**: Asynchronous filtering for responsive search experience
-
 ## Installation
 
 ### Requirements
@@ -154,8 +147,6 @@ A: Check that `search-phrase.js` is loaded and there are no JavaScript console e
 A: This is expected due to browser security restrictions. Use one of these solutions:
 
 - Serve through a web server: `python -m http.server 8000` then visit `http://localhost:8000`
-- Use the built-in development server if available
-- Deploy to a web server for production use
 
 **Q: Multi-term search not working**
 A: Verify you're using commas to separate terms: `term1, term2, term3`
