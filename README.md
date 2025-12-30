@@ -83,7 +83,7 @@ source/
 ```text
 openvpn                    # Find pages about OpenVPN
 "public key infrastructure" # Find exact phrase
-server configuration       # Find "server configuration" phrase
+server configuration       # Find "server" or "configuration" word(s)
 ```
 
 ### Multi-term Searches
