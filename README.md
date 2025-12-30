@@ -9,7 +9,7 @@ This repository contains a Sphinx documentation site with enhanced search functi
 | Search Input | Behavior | Example |
 |-------------|----------|---------|
 | `single word` | Treats as exact phrase | `openvpn` → finds pages containing "openvpn" |
-| `multiple words` | Treats as exact phrase | `openvpn server` → finds pages with "openvpn server" phrase |
+| `multiple words` | Treats as OR | `openvpn server` → finds pages with "openvpn" or "server" word |
 | `"quoted text"` | Exact phrase search | `"public key"` → finds pages with exact phrase |
 | `word1, word2` | Multiple terms (AND logic) | `openvpn, server` → finds pages with BOTH words |
 | `word1, word2, word3` | All terms required | `key, server, config` → finds pages with ALL words |
@@ -153,16 +153,6 @@ A: Verify you're using commas to separate terms: `term1, term2, term3`
 
 **Q: Phrase search giving wrong results**
 A: Check if quotes are needed for exact phrase matching: `"exact phrase"`
-
-## Changelog
-
-### v1.0.0
-
-- Initial implementation with phrase search
-- Auto-quoting for single words
-- Multi-term search with commas
-- Persistent highlighting system
-- Theme-agnostic wrapper approach
 
 ---
 
