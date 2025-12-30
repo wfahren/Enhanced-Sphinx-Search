@@ -32,20 +32,33 @@
       }
       
       let phrases = [];
+      let isOrSearch = false; // Track if this is an OR search (unquoted words)
       
-      // Check if query contains commas - if so, treat as multiple terms
-      if (query.includes(',')) {
-        // Split by comma and treat each part as a separate phrase
-        phrases = query.split(',')
-          .map(term => term.trim())
-          .filter(term => term.length > 0)
-          .map(term => term.replace(/^"|"$/g, '').toLowerCase()); // Remove quotes if present
-      } else {
-        // No commas - treat entire query as one phrase (remove outer quotes if present)
-        const cleanQuery = query.replace(/^"|"$/g, '').trim();
-        if (cleanQuery.length > 0) {
-          phrases = [cleanQuery.toLowerCase()];
+      // Check if query has quotes - if so, it's an AND/phrase search
+      const hasQuotes = /["']/.test(query);
+      
+      if (hasQuotes) {
+        // Quoted search: treat as exact phrase match (AND logic)
+        // Check if query contains commas - if so, treat as multiple terms
+        if (query.includes(',')) {
+          // Split by comma and treat each part as a separate phrase
+          phrases = query.split(',')
+            .map(term => term.trim())
+            .filter(term => term.length > 0)
+            .map(term => term.replace(/^"|"$/g, '').toLowerCase()); // Remove quotes if present
+        } else {
+          // No commas - treat entire query as one phrase (remove outer quotes if present)
+          const cleanQuery = query.replace(/^"|"$/g, '').trim();
+          if (cleanQuery.length > 0) {
+            phrases = [cleanQuery.toLowerCase()];
+          }
         }
+      } else {
+        // Unquoted search: split into individual words for OR logic
+        isOrSearch = true;
+        phrases = query.trim().split(/\s+/)
+          .filter(term => term.length > 0)
+          .map(term => term.toLowerCase());
       }
       
       if (phrases.length === 0) {
@@ -73,9 +86,16 @@
             const html = await response.text();
             const text = Search.htmlToText(html).toLowerCase();
             
-            const hasAllPhrases = phrases.every(phrase => text.includes(phrase));
+            let matchFound;
+            if (isOrSearch) {
+              // OR logic: match if ANY phrase is found
+              matchFound = phrases.some(phrase => text.includes(phrase));
+            } else {
+              // AND logic: match only if ALL phrases are found
+              matchFound = phrases.every(phrase => text.includes(phrase));
+            }
             
-            if (hasAllPhrases) {
+            if (matchFound) {
               filtered.push(result);
             }
           } catch (e) {
